@@ -1,48 +1,120 @@
 <!DOCTYPE html>
-<html>
+<html lang="nl">
 <head>
-  <title>Zou de Titanic het halen?</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Zou de Titanic het vandaag halen?</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #001f3f;
+      color: #ffffff;
+      text-align: center;
+      padding: 2em;
+    }
+    h1 {
+      font-size: 2em;
+      margin-bottom: 0.5em;
+    }
+    #status {
+      font-size: 1.2em;
+      margin-bottom: 1em;
+    }
+    .resultaat {
+      font-size: 1.4em;
+      margin-top: 1em;
+    }
+    ul {
+      text-align: left;
+      max-width: 600px;
+      margin: 1em auto;
+      background: #003366;
+      padding: 1em;
+      border-radius: 10px;
+    }
+    li {
+      margin-bottom: 0.5em;
+    }
+  </style>
 </head>
 <body>
   <h1>Zou de Titanic het vandaag halen?</h1>
-  <div id="result"></div>
+  <div id="status">We controleren de weersomstandigheden langs de route...</div>
+  <div class="resultaat" id="resultaat"></div>
+  <ul id="redenenLijst"></ul>
 
   <script>
-    const apiKey = "0248dd7f5aaa4e0ca7444915250605";
+    const apiKey = '0248dd7f5aaa4e0ca7444915250605';
+
     const routePoints = [
-      { name: "Southampton", lat: 50.90395, lon: -1.40428 },
-      { name: "Cherbourg", lat: 49.6333, lon: -1.6167 },
-      { name: "Queenstown", lat: 51.849, lon: -8.294 },
-      { name: "Mid Atlantic 1", lat: 45.0, lon: -30.0 },
-      { name: "Mid Atlantic 2", lat: 43.0, lon: -40.0 },
-      { name: "Mid Atlantic 3", lat: 41.0, lon: -50.0 },
-      { name: "New York", lat: 40.7128, lon: -74.0060 }
+      { name: 'Southampton (VK)', lat: 50.9097, lon: -1.4044 },
+      { name: 'Cherbourg (Frankrijk)', lat: 49.6333, lon: -1.6167 },
+      { name: 'Cobh (Queenstown, Ierland)', lat: 51.849, lon: -8.294 },
+      { name: 'Midden Atlantische Oceaan 1', lat: 45.0, lon: -30.0 },
+      { name: 'Midden Atlantische Oceaan 2', lat: 43.0, lon: -40.0 },
+      { name: 'Midden Atlantische Oceaan 3', lat: 41.0, lon: -49.0 },
+      { name: 'Zinklocatie', lat: 41.7325, lon: -49.9469 },
+      { name: 'New York (VS)', lat: 40.7128, lon: -74.0060 }
     ];
-    let dangerCount = 0;
-    async function checkWeather() {
+
+    async function haalWeerOp(lat, lon) {
+      const proxyUrl = 'https://corsproxy.io/?';
+      const url = `${proxyUrl}https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${lat},${lon}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Fout bij ophalen weer: ${response.status}`);
+      return await response.json();
+    }
+
+    async function analyseerRoute() {
+      const statusEl = document.getElementById('status');
+      const resultaatEl = document.getElementById('resultaat');
+      const redenenEl = document.getElementById('redenenLijst');
+
+      const redenen = [];
+
       try {
-        for (const point of routePoints) {
-          const url = `https://corsproxy.io/?https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${point.lat},${point.lon}`;
-          const response = await fetch(url);
-          if (!response.ok) throw new Error(`Fout bij ${point.name}: ${response.status}`);
-          const data = await response.json();
-          const wind = data.current.wind_kph;
-          const visibility = data.current.vis_km;
-          const condition = data.current.condition.text.toLowerCase();
-          if (wind > 50 || visibility < 5 || condition.includes("storm") || condition.includes("snow") || condition.includes("fog") || condition.includes("ice")) {
-            dangerCount++;
+        for (const punt of routePoints) {
+          const data = await haalWeerOp(punt.lat, punt.lon);
+          const current = data.current;
+
+          const wind = current.wind_kph;
+          const zicht = current.vis_km;
+          const temp = current.temp_c;
+          const regen = current.precip_mm;
+
+          if (wind > 40) {
+            redenen.push(`${punt.name}: gevaarlijke wind (${wind} km/u)`);
+          }
+          if (zicht < 2) {
+            redenen.push(`${punt.name}: dichte mist (${zicht} km zicht)`);
+          }
+          if (temp < 2) {
+            redenen.push(`${punt.name}: kans op ijsvorming (${temp}°C)`);
+          }
+          if (regen > 5) {
+            redenen.push(`${punt.name}: zware neerslag (${regen} mm)`);
           }
         }
-        const result = document.getElementById("result");
-        result.innerHTML = (dangerCount >= 2)
-          ? "🚫 De Titanic zou het vandaag waarschijnlijk <b>niet</b> halen."
-          : "✅ De Titanic zou het vandaag <b>wel</b> halen!";
+
+        statusEl.textContent = '';
+        if (redenen.length === 0) {
+          resultaatEl.textContent = '✅ Ja! De Titanic zou het vandaag waarschijnlijk wel halen.';
+        } else {
+          resultaatEl.textContent = '❌ Nee. De Titanic zou het vandaag waarschijnlijk niet halen, vanwege:';
+          redenen.forEach(reden => {
+            const li = document.createElement('li');
+            li.textContent = reden;
+            redenenEl.appendChild(li);
+          });
+        }
       } catch (error) {
-        console.error("Fout bij het ophalen van weerdata:", error);
-        document.getElementById("result").innerHTML = "❌ Er ging iets mis met het ophalen van de weergegevens.";
+        console.error(error);
+        statusEl.textContent = '';
+        resultaatEl.textContent = '❌ Er ging iets mis bij het ophalen van de weergegevens.';
       }
     }
-    checkWeather();
+
+    analyseerRoute();
   </script>
 </body>
 </html>
