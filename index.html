@@ -22,7 +22,7 @@
     async function checkWeather() {
       try {
         for (const point of routePoints) {
-          const url = `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${point.lat},${point.lon}`;
+          const url = `https://corsproxy.io/?https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${point.lat},${point.lon}`;
           const response = await fetch(url);
           if (!response.ok) throw new Error(`Fout bij ${point.name}: ${response.status}`);
           const data = await response.json();
