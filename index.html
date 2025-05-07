@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Zou de Titanic het halen?</title>
+</head>
+<body>
+  <h1>Zou de Titanic het vandaag halen?</h1>
+  <div id="result"></div>
+
+  <script>
+    const apiKey = "0248dd7f5aaa4e0ca7444915250605";
+    const routePoints = [
+      { name: "Southampton", lat: 50.90395, lon: -1.40428 },
+      { name: "Cherbourg", lat: 49.6333, lon: -1.6167 },
+      { name: "Queenstown", lat: 51.849, lon: -8.294 },
+      { name: "Mid Atlantic 1", lat: 45.0, lon: -30.0 },
+      { name: "Mid Atlantic 2", lat: 43.0, lon: -40.0 },
+      { name: "Mid Atlantic 3", lat: 41.0, lon: -50.0 },
+      { name: "New York", lat: 40.7128, lon: -74.0060 }
+    ];
+    let dangerCount = 0;
+    async function checkWeather() {
+      try {
+        for (const point of routePoints) {
+          const url = `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${point.lat},${point.lon}`;
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(`Fout bij ${point.name}: ${response.status}`);
+          const data = await response.json();
+          const wind = data.current.wind_kph;
+          const visibility = data.current.vis_km;
+          const condition = data.current.condition.text.toLowerCase();
+          if (wind > 50 || visibility < 5 || condition.includes("storm") || condition.includes("snow") || condition.includes("fog") || condition.includes("ice")) {
+            dangerCount++;
+          }
+        }
+        const result = document.getElementById("result");
+        result.innerHTML = (dangerCount >= 2)
+          ? "🚫 De Titanic zou het vandaag waarschijnlijk <b>niet</b> halen."
+          : "✅ De Titanic zou het vandaag <b>wel</b> halen!";
+      } catch (error) {
+        console.error("Fout bij het ophalen van weerdata:", error);
+        document.getElementById("result").innerHTML = "❌ Er ging iets mis met het ophalen van de weergegevens.";
+      }
+    }
+    checkWeather();
+  </script>
+</body>
+</html>
